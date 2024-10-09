@@ -4,6 +4,15 @@ import regionToolset
 import numpy as np
 from scipy.spatial import KDTree
 
+
+def uniqueKey(base, repository):
+    n = 0
+    while 0 == n or name in repository:
+        n -= 1
+        name = base + str(n)
+    return name
+
+
 def getSimlarEdges(rootAssembly, edge0):
     "Find similar size circular edges in all instances of this Part"
     radius = edge0.getRadius()
@@ -79,12 +88,14 @@ def centerPoint(model, edge):
     # Create a new reference point and coupling constraint
     instance = rootAssembly.instances[edge.instanceName]
     rpFeature = rootAssembly.ReferencePoint(point=instance.InterestingPoint(edge, CENTER))
-    rp = model.rootAssembly.referencePoints[rpFeature.id]
+    rp = rootAssembly.referencePoints[rpFeature.id]
+    rootAssembly.features.changeKey(fromName=rpFeature.name,
+                                    toName=uniqueKey('BoltRP', rootAssembly.features))
     controlRegion = regionToolset.Region( referencePoints=[rp] )
     surfaceRegion = regionToolset.Region(side1Edges=instance.edges[edge.index:edge.index+1])
     #surfaceRegion = regionToolset.Region(side1Edges=([edge],) )
     #surfaceRegion = regionToolset.Region(side1Edges=[instance.edges[edge.index]] )
-    model.Coupling(name='coup-{}'.format(len(model.constraints)),
+    model.Coupling(name=uniqueKey('BoltCoupling', model.constraints)),
         controlPoint=controlRegion,
         surface=surfaceRegion,
         influenceRadius=WHOLE_SURFACE,
@@ -104,7 +115,10 @@ def bond(model, edgeA, edgeB):
     rpB = centerPoint(model, edgeB)
     for edge in edgeA, edgeB:
         newConnections.add( hashEdge(edge) )
-    return rootAssembly.WirePolyLine(points=((rpA, rpB), ), mergeType=IMPRINT, meshable=False)
+    wire = rootAssembly.WirePolyLine(points=((rpA, rpB), ), mergeType=IMPRINT, meshable=False)
+    newName = uniqueKey('Bolt-{}-{}'.format(edgeA.instanceName, edgeB.instanceName), rootAssembly.features)
+    rootAssembly.features.changeKey(fromName=wire.name, toName=newName)
+    return rootAssembly.features[newName]
 
 
 def myMethod(edge1, edge2):
@@ -116,16 +130,16 @@ def myMethod(edge1, edge2):
     if edge1.instanceName == edge2.instanceName:
         raise ValueError('Edges are from the same instance')
     edges = edge1, edge2
+    radius = [edge.getRadius() for edge in (edge1, edge2)] # will raise exception if not a radius
+    if any(r < 1e-3 for r in radius):
+        raise ValueError('Radius is very small')
     for edge in edges:
-        radius = edge.getRadius() # will raise exception if not a radius
-        if radius < 1e-3:
-            raise ValueError('Edge {} radius is very small'.format(edge.instanceName))
         if len(edge.getVertices()) > 1:
             raise ValueError('Edge {} forms incomplete circle'.format(edge.instanceName))
         instance = rootAssembly.instances[edge.instanceName]
         assert hasattr(instance, 'partName')
 
-    newConnections.clear()
+    newConnections.clear() # reset
 
     wires = [bond(model, edge1, edge2)]
 
@@ -149,10 +163,7 @@ def myMethod(edge1, edge2):
             geomsequence = rootAssembly.edges[index:index + 1]
         else:
             geomsequence += rootAssembly.edges[index:index + 1]
-    #print(wires) # TODO add
-    #print(wires[0])
-    #wireRegion = regionToolset.Region(edges=[e for e in rootAssembly.edges if e.featureName in wireNames])
-    wireRegion = regionToolset.Region(edges=geomsequence)
-    rootAssembly.Set(name='WireSet-{}'.format(len(rootAssembly.sets)),
+    boltSet = rootAssembly.Set(name=uniqueKey('BoltWires', rootAssembly.sets),
                      edges=geomsequence)
 
+    print(len(geomsequence), boltSet.name, 'wires D{:.3g} to D{:.3g}'.format(2*radius[0], 2*radius[1]))
