@@ -136,7 +136,7 @@ def myMethod(edge1, edge2):
     pointTree = KDTree([e.pointOn[0] for e in similarEdges2])
     distances, index2 = pointTree.query([e.pointOn[0] for e in similarEdges1])
     for edge, distance, j in zip(similarEdges1, distances, index2):
-        if distance > 4: # TODO base this limit on the distance between points in the initial bond
+        if distance > 20: # TODO base this limit on the distance between points in the initial bond
             continue
         wires.append(bond(model, edge, similarEdges2[j]))
 
