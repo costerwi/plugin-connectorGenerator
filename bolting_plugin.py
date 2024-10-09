@@ -13,14 +13,14 @@ class MyProcedure(AFXProcedure):
 
     def getFirstStep(self):
         self.step1 = AFXPickStep(self, self.edge1Kw,
-            'Select edge 1', AFXPickStep.EDGES,
+            'Select bolt hole edge 1', AFXPickStep.EDGES,
             numberToPick=ONE)
         return self.step1
 
     def getNextStep(self, previous):
         if previous == self.step1:
             return AFXPickStep(self, self.edge2Kw,
-                'Select edge 2', AFXPickStep.EDGES,
+                'Select bolt hole edge 2', AFXPickStep.EDGES,
                 numberToPick=ONE)
 
 ###########################################################################
