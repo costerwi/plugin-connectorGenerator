@@ -1,7 +1,11 @@
+"""Generate coupling connections between selected hole edges,
+find and repeat for all similar edges
+"""
 
 from abaqusGui import *
+__version__ = '0.1.0'
 
-class MyProcedure(AFXProcedure):
+class EdgePickingProcedure(AFXProcedure):
 
     def __init__(self, owner):
 
@@ -13,14 +17,14 @@ class MyProcedure(AFXProcedure):
 
     def getFirstStep(self):
         self.step1 = AFXPickStep(self, self.edge1Kw,
-            'Select bolt hole edge 1', AFXPickStep.EDGES,
+            'Select edge of first bolt hole', AFXPickStep.EDGES,
             numberToPick=ONE)
         return self.step1
 
     def getNextStep(self, previous):
         if previous == self.step1:
             return AFXPickStep(self, self.edge2Kw,
-                'Select bolt hole edge 2', AFXPickStep.EDGES,
+                'Select edge of second bolt hole', AFXPickStep.EDGES,
                 numberToPick=ONE)
 
     def getLoopStep(self):
@@ -33,12 +37,11 @@ toolset = getAFXApp().getAFXMainWindow().getPluginToolset()
 
 toolset.registerGuiMenuButton(
         buttonText='Bolting',
-        object=MyProcedure(toolset),
+        object=EdgePickingProcedure(toolset),
         kernelInitString='import bolting',
         author='Carl Osterwisch',
-        #version=__version__,
+        version=__version__,
         #helpUrl=helpUrl,
         applicableModules=['Assembly', 'Interaction', 'Load', 'Mesh'],
-        description='',
+        description=__doc__,
         )
-
