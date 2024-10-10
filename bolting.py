@@ -163,7 +163,10 @@ def myMethod(edge1, edge2):
             geomsequence = rootAssembly.edges[index:index + 1]
         else:
             geomsequence += rootAssembly.edges[index:index + 1]
-    boltSet = rootAssembly.Set(name=uniqueKey('BoltWires', rootAssembly.sets),
-                     edges=geomsequence)
 
-    print(len(geomsequence), boltSet.name, 'wires D{:.3g} to D{:.3g}'.format(2*radius[0], 2*radius[1]))
+    name = uniqueKey('BoltWires', rootAssembly.sets)
+    rootAssembly.Set(name=name, edges=geomsequence)
+
+    print(len(geomsequence), name,
+        'added from hole diameter {:.3g} to hole diameter {:.3g}'.format(
+            2*radius[0], 2*radius[1]))
