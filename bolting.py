@@ -95,7 +95,7 @@ def centerPoint(model, edge):
     surfaceRegion = regionToolset.Region(side1Edges=instance.edges[edge.index:edge.index+1])
     #surfaceRegion = regionToolset.Region(side1Edges=([edge],) )
     #surfaceRegion = regionToolset.Region(side1Edges=[instance.edges[edge.index]] )
-    model.Coupling(name=uniqueKey('BoltCoupling', model.constraints)),
+    model.Coupling(name=uniqueKey('BoltCoupling', model.constraints),
         controlPoint=controlRegion,
         surface=surfaceRegion,
         influenceRadius=WHOLE_SURFACE,
