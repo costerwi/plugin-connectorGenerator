@@ -23,6 +23,9 @@ class MyProcedure(AFXProcedure):
                 'Select bolt hole edge 2', AFXPickStep.EDGES,
                 numberToPick=ONE)
 
+    def getLoopStep(self):
+        return self.step1  # loop until stopped
+
 ###########################################################################
 # Register the plugins
 ###########################################################################
