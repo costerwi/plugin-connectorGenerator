@@ -1,3 +1,14 @@
+"""Abaqus CAE plugin to find and create couplings and wire features connecting
+circular edges matching the size and Parts of the two edges selected by the user.
+
+This is intended to make it much more convenient to fasten layers of midsurface
+together using connectors when several circular fastener holes are available but
+there are no fasteners.
+
+Carl Osterwisch, October 2024
+"""
+
+from __future__ import print_function
 from abaqus import *
 from abaqusConstants import *
 import regionToolset
