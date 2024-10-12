@@ -79,11 +79,6 @@ def getSimlarEdges(rootAssembly, edge0):
     return allSimilarEdges
 
 
-def hashEdge(edge):
-    "Return unique tuple for this edge"
-    return edge.instanceName, edge.index
-
-
 def centerPoint(model, edgeArray):
     "Create reference point at center of circle and connect with coupling"
     rootAssembly = model.rootAssembly
