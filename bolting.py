@@ -166,9 +166,13 @@ def addConnectors(edge1, edge2):
         else:
             geomsequence += rootAssembly.edges[index:index + 1]
 
-    name = uniqueKey('BoltWires', rootAssembly.sets)
-    rootAssembly.Set(name=name, edges=geomsequence)
+    if not geomsequence:
+        print('No new wires added from hole diameter {:.3g} to hole diameter {:.3g}'.format(
+            2*radius[0], 2*radius[1]))
+    else:
+        name = uniqueKey('BoltWires', rootAssembly.sets)
+        rootAssembly.Set(name=name, edges=geomsequence)
 
-    print(len(geomsequence), name,
-        'added from hole diameter {:.3g} to hole diameter {:.3g}'.format(
+        print(len(geomsequence), name,
+            'added from hole diameter {:.3g} to hole diameter {:.3g}'.format(
             2*radius[0], 2*radius[1]))
