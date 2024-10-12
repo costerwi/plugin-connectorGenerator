@@ -11,7 +11,7 @@ class EdgePickingProcedure(AFXProcedure):
 
         AFXProcedure.__init__(self, owner)
 
-        self.cmd = AFXGuiCommand(self, method='myMethod', objectName='bolting')
+        self.cmd = AFXGuiCommand(self, method='addConnectors', objectName='bolting')
         self.edge1Kw = AFXObjectKeyword(self.cmd, 'edge1', True)
         self.edge2Kw = AFXObjectKeyword(self.cmd, 'edge2', True)
 

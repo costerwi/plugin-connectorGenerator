@@ -121,7 +121,9 @@ def bond(model, edgeA, edgeB):
     return rootAssembly.features[newName]
 
 
-def myMethod(edge1, edge2):
+def addConnectors(edge1, edge2):
+    "Main method called by CAE"
+
     # Check for bad input from user
     viewport = session.viewports[session.currentViewportName]
     rootAssembly = viewport.displayedObject
