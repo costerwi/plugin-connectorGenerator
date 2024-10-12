@@ -13,8 +13,14 @@ def uniqueKey(base, repository):
     return name
 
 
+def referencePair(rp1, rp2):
+    "Return unique identifier for these two refrence points"
+    return tuple(sorted([rp1, rp2]))
+
+
 def getSimlarEdges(rootAssembly, edge0):
     "Find similar size circular edges in all instances of this Part"
+    #TODO return list of edgeArray masks
     radius = edge0.getRadius()
     similarEdges = [edge0] # Similar size edges within the original instance
     instance = rootAssembly.instances[edge0.instanceName]
@@ -104,18 +110,19 @@ def centerPoint(model, edge):
     return rp
 
 
-newConnections = set()  # make sure an edge is only added once
-def bond(model, edgeA, edgeB):
+connectedPoints = []  # make sure an edge is only added once
+def wireBetweenEdgeCenters(model, edgeA, edgeB):
     "Create a wire feature between center of edgeA and edgeB"
-    for edge in edgeA, edgeB:
-        if hashEdge(edge) in newConnections:
-            return None # Avoid duplicate connections
+
     rootAssembly = model.rootAssembly
     rpA = centerPoint(model, edgeA)
     rpB = centerPoint(model, edgeB)
-    for edge in edgeA, edgeB:
-        newConnections.add( hashEdge(edge) )
-    wire = rootAssembly.WirePolyLine(points=((rpA, rpB), ), mergeType=IMPRINT, meshable=False)
+    pairId = referencePair(rpA, rpB)
+    if pairId in connectedPoints:
+        return None # wire already exists
+
+    wire = rootAssembly.WirePolyLine(points=((rpA, rpB), ), meshable=False)
+    connectedPoints.append(pairId)
     newName = uniqueKey('Bolt-{}-{}'.format(edgeA.instanceName, edgeB.instanceName), rootAssembly.features)
     rootAssembly.features.changeKey(fromName=wire.name, toName=newName)
     return rootAssembly.features[newName]
@@ -132,8 +139,8 @@ def addConnectors(edge1, edge2):
     if edge1.instanceName == edge2.instanceName:
         raise ValueError('Edges are from the same instance')
     edges = edge1, edge2
-    radius = [edge.getRadius() for edge in (edge1, edge2)] # will raise exception if not a radius
-    if any(r < 1e-3 for r in radius):
+    radii = [edge.getRadius() for edge in edges] # will raise exception if not a radius
+    if any(r < 1e-3 for r in radii):
         raise ValueError('Radius is very small')
     for edge in edges:
         if len(edge.getVertices()) > 1:
@@ -141,9 +148,18 @@ def addConnectors(edge1, edge2):
         instance = rootAssembly.instances[edge.instanceName]
         assert hasattr(instance, 'partName')
 
-    newConnections.clear() # reset
+    # Collect uniqueId of all existing wires
+    connectedPoints.clear()
+    for edge in rootAssembly.edges:
+        vertexList = edge.getVertices()
+        if 2 != len(vertexList):
+            continue # not a 2-point connector
+        vertices = (rootAssembly.vertices[i] for i in vertexList)
+        rp = (rootAssembly.referencePoints.findAt(*v.pointOn) for v in vertices) # TODO is findAt most efficient?
+        connectedPoints.append(referencePair(*rp))
 
-    wires = [bond(model, edge1, edge2)]
+    wires = [wireBetweenEdgeCenters(model, edge1, edge2)]
+    distance0 = np.linalg.norm(np.asarray(edge1.pointOn[0]) - edge2.pointOn[0])
 
     similarEdges1 = getSimlarEdges(rootAssembly, edge1)
     similarEdges2 = getSimlarEdges(rootAssembly, edge2)
@@ -151,10 +167,12 @@ def addConnectors(edge1, edge2):
     # Find and connect similar sized circular edges on all instances of the two parts
     pointTree = KDTree([e.pointOn[0] for e in similarEdges2])
     distances, index2 = pointTree.query([e.pointOn[0] for e in similarEdges1])
-    for edge, distance, j in zip(similarEdges1, distances, index2):
-        if distance > 20: # TODO base this limit on the distance between points in the initial bond
-            continue
-        wires.append(bond(model, edge, similarEdges2[j]))
+    maxDistance = 1.5*(distance0 + sum(radii))
+    sortedRows = np.argsort(distance)
+    for row in sortedRows:
+        if distance[row] > maxDistance:
+            break # this row and remaining rows are too far away
+        wires.append(wireBetweenEdgeCenters(model, similarEdges1[row], similarEdges2[index2[row]]))
 
     wireNames = set(w.name for w in wires if w is not None)
     geomsequence = None
@@ -168,11 +186,11 @@ def addConnectors(edge1, edge2):
 
     if not geomsequence:
         print('No new wires added from hole diameter {:.3g} to hole diameter {:.3g}'.format(
-            2*radius[0], 2*radius[1]))
+            2*radii[0], 2*radii[1]))
     else:
         name = uniqueKey('BoltWires', rootAssembly.sets)
         rootAssembly.Set(name=name, edges=geomsequence)
 
         print(len(geomsequence), name,
             'added from hole diameter {:.3g} to hole diameter {:.3g}'.format(
-            2*radius[0], 2*radius[1]))
+            2*radii[0], 2*radii[1]))
