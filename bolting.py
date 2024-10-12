@@ -184,7 +184,7 @@ def addConnectors(edge1, edge2):
     distances, index2 = pointTree.query([min(edgeArray).pointOn[0] for edgeArray in similarEdges1],
                                         distance_upper_bound=maxDistance)
 
-    row2Points = set() # keep track to prevent multiple wires connecting to the same edge2 similar edge
+    row2Points = set() # keep track to prevent multiple edge1 edges connecting to the same edge2 edge
     wires = []
     for row in np.argsort(distances):
         if distances[row] > maxDistance:
