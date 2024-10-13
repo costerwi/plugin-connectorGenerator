@@ -194,22 +194,19 @@ def addConnectors(edge1, edge2):
         wires.append(wireBetweenEdgeCenters(model, similarEdges1[row], similarEdges2[row2]))
 
     wireNames = set(w.name for w in wires if w is not None)
-    geomsequence = None
-    for index, edge in enumerate(rootAssembly.edges):
+    newEdges = rootAssembly.edges[0:0]  # empty edgeArray
+    for edge in rootAssembly.edges:
         if not edge.featureName in wireNames:
             continue
-        if geomsequence is None:
-            geomsequence = rootAssembly.edges[index:index + 1]
-        else:
-            geomsequence += rootAssembly.edges[index:index + 1]
+        newEdges += rootAssembly.edges[edge.index:edge.index + 1]
 
-    if not geomsequence:
+    if not newEdges:
         print('No new wires added from hole diameter {:.3g} to hole diameter {:.3g}'.format(
             2*radii[0], 2*radii[1]))
     else:
         name = uniqueKey(rootAssembly.sets, 'BoltWires')
-        rootAssembly.Set(name=name, edges=geomsequence)
+        rootAssembly.Set(name=name, edges=newEdges)
 
-        print(len(geomsequence), name,
+        print(len(newEdges), name,
             'added from hole diameter {:.3g} to hole diameter {:.3g}'.format(
             2*radii[0], 2*radii[1]))
