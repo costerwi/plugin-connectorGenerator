@@ -11,6 +11,7 @@ Carl Osterwisch, October 2024
 from __future__ import print_function
 from abaqus import *
 from abaqusConstants import *
+from bisect import bisect_left
 import regionToolset
 import numpy as np
 from scipy.spatial import KDTree
@@ -123,19 +124,20 @@ def centerPoint(model, edgeArray):
     return rp
 
 
-connectedPoints = []  # make sure an edge is only added once
+connectedPoints = []  # sorted list of existing connector point pairs
 def wireBetweenEdgeCenters(model, edgeArrayA, edgeArrayB):
     "Create a wire feature between center of edgeA and edgeB"
 
     rootAssembly = model.rootAssembly
     rpA = centerPoint(model, edgeArrayA)
     rpB = centerPoint(model, edgeArrayB)
-    pairId = referencePair(rpA, rpB)
-    if pairId in connectedPoints:
+    pair = referencePair(rpA, rpB)
+    insertion = bisect_left(connectedPoints, pair)
+    if insertion < len(connectedPoints) and pair == connectedPoints[insertion]:
         return None # wire already exists
 
     wire = rootAssembly.WirePolyLine(points=((rpA, rpB), ), meshable=False)
-    connectedPoints.append(pairId)
+    connectedPoints.insert(insertion, pair) # insert sorted
     newName = uniqueKey(rootAssembly.features,
             'Bolt-{}-{}'.format(min(edgeArrayA).instanceName, min(edgeArrayB).instanceName))
     rootAssembly.features.changeKey(fromName=wire.name, toName=newName)
@@ -166,7 +168,8 @@ def addConnectors(edge1, edge2):
             continue # not a 2-point connector
         vertices = (rootAssembly.vertices[i] for i in vertexList)
         rp = (rootAssembly.referencePoints.findAt(*v.pointOn) for v in vertices) # TODO is findAt most efficient?
-        connectedPoints.append(referencePair(*rp))
+        pair = referencePair(*rp)
+        connectedPoints.insert(bisect_left(connectedPoints, pair), pair) # insert sorted
 
     similarEdges1 = getSimlarEdges(rootAssembly, edge1)
     similarEdges2 = getSimlarEdges(rootAssembly, edge2)
