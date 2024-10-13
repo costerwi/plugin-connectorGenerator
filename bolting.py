@@ -31,37 +31,30 @@ def referencePair(rp1, rp2):
     return tuple(sorted([rp1, rp2]))
 
 
-def tangentEdges(edge):
+def tangentEdges(edge, radius):
     "Return edgeArray of tangent edges with the same radius as edge"
-    radius = edge.getRadius()
     edgeArray = edge.getEdgesByEdgeAngle(1.0) # tangent edges within 1 degree
     for edge in edgeArray:
-        r = edge.getRadius()
-        if abs(r - radius)/radius > 0.01:
+        if abs(radius - edge.getRadius())/radius > 0.01:
             raise ValueError('Tangent edges have inconsistent radii')
     return edgeArray
 
 
-def getSimlarEdges(rootAssembly, edge0):
+def getSimlarEdges(rootAssembly, edge0, radius):
     "Return list of edge arrays with same radius as edge0 in all instances of this Part"
-    radius = edge0.getRadius()
     instance0 = rootAssembly.instances[edge0.instanceName]
-    instance0Edges = [tangentEdges(edge0)] # edge0 forms the first item in the list
+    instance0Edges = [tangentEdges(edge0, radius)] # edge0 forms the first item in the list
     for edge in instance0.edges:  # search edges within original instance
         if edge.isReferenceRep:
             continue # reference geom
         if any(edge in edgeArray for edgeArray in instance0Edges):
             continue # already in the list
         try:
-            r2 = edge.getRadius()
+            if abs((radius - edge.getRadius())/radius) > 0.01:
+                continue # wrong radius
+            instance0Edges.append(tangentEdges(edge, radius))
         except:
-            continue # not recognized as an arc
-        if abs((radius - r2)/radius) > 0.01:
-            continue # wrong radius
-        try:
-            instance0Edges.append(tangentEdges(edge))
-        except:
-            continue # failed to construct tangent edges
+            continue # ignore all errors
 
     # Add the same edges arrays from all instance of this part
     allSimilarEdges = instance0Edges.copy()
@@ -171,8 +164,8 @@ def addConnectors(edge1, edge2):
         pair = referencePair(*rp)
         connectedPoints.insert(bisect_left(connectedPoints, pair), pair) # insert sorted
 
-    similarEdges1 = getSimlarEdges(rootAssembly, edge1)
-    similarEdges2 = getSimlarEdges(rootAssembly, edge2)
+    similarEdges1 = getSimlarEdges(rootAssembly, edge1, radii[0])
+    similarEdges2 = getSimlarEdges(rootAssembly, edge2, radii[1])
 
     distance0 = np.linalg.norm(np.asarray(edge1.pointOn[0]) - edge2.pointOn[0])
     maxDistance = 1.5*(distance0 + sum(radii))
