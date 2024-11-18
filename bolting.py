@@ -193,13 +193,15 @@ def addConnectors(edge1, edge2):
             continue
         newEdges += rootAssembly.edges[edge.index:edge.index + 1]
 
+
+    partNames = [rootAssembly.instances[edge.instanceName].partName for edge in edges]
     if not newEdges:
-        print('No new wires added from hole diameter {:.3g} to hole diameter {:.3g}'.format(
-            2*radii[0], 2*radii[1]))
+        print('No new wires added from {0[0]} hole diameter {1[0]:.3g} to {0[1]} hole diameter {1[1]:.3g}'.format(
+            partNames, 2*np.asarray(radii)))
     else:
         name = uniqueKey(rootAssembly.sets, 'BoltWires')
         rootAssembly.Set(name=name, edges=newEdges)
 
         print(len(newEdges), name,
-            'added from hole diameter {:.3g} to hole diameter {:.3g}'.format(
-            2*radii[0], 2*radii[1]))
+            'added from {0[0]} hole diameter {1[0]:.3g} to {0[1]} hole diameter {1[1]:.3g}'.format(
+            partNames, 2*np.asarray(radii)))
