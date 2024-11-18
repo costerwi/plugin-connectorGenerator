@@ -9,7 +9,7 @@ Carl Osterwisch, October 2024
 """
 
 from abaqusGui import *
-__version__ = '0.1.1'
+__version__ = '0.2.0'
 
 class EdgePickingProcedure(AFXProcedure):
 
@@ -29,9 +29,11 @@ class EdgePickingProcedure(AFXProcedure):
 
     def getNextStep(self, previous):
         if previous == self.step1:
-            return AFXPickStep(self, self.edge2Kw,
+            step = AFXPickStep(self, self.edge2Kw,
                 'Select edge of second bolt hole', AFXPickStep.EDGES,
                 numberToPick=ONE)
+            step.allowRepeatedSelections(False)
+            return step
 
     def getLoopStep(self):
         return self.step1  # loop until stopped
