@@ -16,7 +16,6 @@ import regionToolset
 import numpy as np
 from scipy.spatial import KDTree
 
-
 def uniqueKey(repository, baseName='Item'):
     "Return a new unique key within the repository"
     n = 0
@@ -24,6 +23,11 @@ def uniqueKey(repository, baseName='Item'):
         n -= 1
         name = baseName + str(n)
     return name
+
+
+def edgeId(edge):
+    "Return a hashable identity for this edge"
+    return edge.index, edge.instanceName
 
 
 def referencePair(rp1, rp2):
@@ -73,57 +77,97 @@ def getSimlarEdges(rootAssembly, edge0, radius):
     return allSimilarEdges
 
 
-def centerPoint(model, edgeArray):
-    "Create reference point at center of circle and connect with coupling"
+newPoints = []
+edgeCenters = {} # dict edge.index -> rp
+def resetCenters(model):
+    "Rebuild edgeCenters based on couplings between reference points and edges"
+    newPoints.clear()
+    edgeCenters.clear()
     rootAssembly = model.rootAssembly
-    # Search all existing couplings for this edge, return its referencePoint if found
-    edge0 = min(edgeArray)
     for constraint in model.constraints.values():
         if not hasattr(constraint, 'couplingType'):
             continue # not a coupling
         if constraint.surface[1] != 'Assembly':
             continue
         surfaceName = constraint.surface[0]
-        if surfaceName in rootAssembly.allInternalSurfaces:
+        try:
             surface = rootAssembly.allInternalSurfaces[surfaceName]
-        else:
+        except KeyError:
             surface = rootAssembly.surfaces[surfaceName]
-        if not edge0 in surface.edges:
-            continue # not the same edge
+        if not surface.edges:
+            continue # must have edges
+        edge0 = min(surface.edges)
         controlSetName = constraint.controlPoint[0]
-        if controlSetName in rootAssembly.allInternalSets:
+        try:
             controlSet = rootAssembly.allInternalSets[controlSetName]
-        else:
+        except KeyError:
             controlSet = rootAssembly.sets[controlSetName]
-        if len(controlSet.referencePoints) < 1:
-            continue # no reference points
-        # Matching! Return the existing controlPoint
-        return controlSet.referencePoints[0]
+        if len(controlSet.referencePoints) != 1:
+            continue # must have one reference point
+        edgeCenters[edgeId(edge0)] = controlSet.referencePoints[0]
 
-    # Create a new reference point and coupling constraint
+
+def deleteUnusedCenters(rootAssembly):
+    "Remove the new but unusued reference points"
+    unusedCenterPoints = []
+    for featureId in newPoints:
+        feature = rootAssembly.featuresById[featureId]
+        if not feature.children: # not used by a coupling
+            unusedCenterPoints.append(feature.name)
+    rootAssembly.deleteFeatures(unusedCenterPoints)
+
+
+def centerPoint(model, edgeArray):
+    "Create reference point at center of circle and connect with coupling"
+    rootAssembly = model.rootAssembly
+    # Search all existing couplings for this edge, return its referencePoint if found
+    edge0 = min(edgeArray)
+    existing = edgeCenters.get(edgeId(edge0))
+    if existing:
+        return existing
+    # Create a new reference point
     instance = rootAssembly.instances[edge0.instanceName]
     rpFeature = rootAssembly.ReferencePoint(point=instance.InterestingPoint(edge0, CENTER))
-    rp = rootAssembly.referencePoints[rpFeature.id]
-    rootAssembly.features.changeKey(fromName=rpFeature.name,
-                                    toName=uniqueKey(rootAssembly.features, 'BoltRP'))
+    newPoints.append(rpFeature.id)
+    return rootAssembly.referencePoints[rpFeature.id]
+
+
+def makeSpider(model, edgeArray, rp):
+    "Create coupling between edgeArray and rp"
+    edge0 = min(edgeArray)
+    if edgeId(edge0) in edgeCenters:
+        return # already connected by coupling
     controlRegion = regionToolset.Region( referencePoints=[rp] )
     surfaceRegion = regionToolset.Region(side1Edges=edgeArray)
-    model.Coupling(name=uniqueKey(model.constraints, 'BoltCoupling'),
+    coupling = model.Coupling(name=uniqueKey(model.constraints, 'CenterCoupling'),
         controlPoint=controlRegion,
         surface=surfaceRegion,
         influenceRadius=WHOLE_SURFACE,
         couplingType=KINEMATIC,
         rotationalCouplingType=ROTATIONAL_STRUCTURAL)
-    return rp
+    edgeCenters[edgeId(edge0)] = rp # remember
+    return coupling
 
 
 connectedPoints = []  # sorted list of existing connector point pairs
-def wireBetweenEdgeCenters(model, edgeArrayA, edgeArrayB):
+
+def resetConnectedPoints(rootAssembly):
+    connectedPoints.clear()
+    groupByChild = {}
+    for rpid, rp in rootAssembly.referencePoints.items():
+        rpfeat = rootAssembly.featuresById[rpid]
+        groupByChild.setdefault(rpfeat.children, []).append(rp)
+    for rpList in groupByChild.values():
+        if 2 != len(rpList):
+            continue # not a 2 RP feature
+        pair = referencePair(*rpList)
+        connectedPoints.insert(bisect_left(connectedPoints, pair), pair) # insert sorted
+
+
+def wireBetweenCenters(model, rpA, rpB):
     "Create a wire feature between center of edgeA and edgeB"
 
     rootAssembly = model.rootAssembly
-    rpA = centerPoint(model, edgeArrayA)
-    rpB = centerPoint(model, edgeArrayB)
     pair = referencePair(rpA, rpB)
     insertion = bisect_left(connectedPoints, pair)
     if insertion < len(connectedPoints) and pair == connectedPoints[insertion]:
@@ -131,8 +175,7 @@ def wireBetweenEdgeCenters(model, edgeArrayA, edgeArrayB):
 
     wire = rootAssembly.WirePolyLine(points=((rpA, rpB), ), meshable=False)
     connectedPoints.insert(insertion, pair) # insert sorted
-    newName = uniqueKey(rootAssembly.features,
-            'Bolt-{}-{}'.format(min(edgeArrayA).instanceName, min(edgeArrayB).instanceName))
+    newName = uniqueKey(rootAssembly.features, 'WireBolt')
     rootAssembly.features.changeKey(fromName=wire.name, toName=newName)
     return rootAssembly.features[newName]
 
@@ -153,46 +196,50 @@ def addConnectors(edge1, edge2):
         instance = rootAssembly.instances[edge.instanceName]
         assert hasattr(instance, 'partName')
 
-    # Collect connectedPoints of existing wires to avoid duplication
-    connectedPoints.clear()
-    for edge in rootAssembly.edges:
-        vertexList = edge.getVertices()
-        if 2 != len(vertexList):
-            continue # not a 2-point connector
-        vertices = (rootAssembly.vertices[i] for i in vertexList)
-        rp = (rootAssembly.referencePoints.findAt(*v.pointOn) for v in vertices) # TODO is findAt most efficient?
-        pair = referencePair(*rp)
-        connectedPoints.insert(bisect_left(connectedPoints, pair), pair) # insert sorted
+    resetCenters(model)
+    resetConnectedPoints(rootAssembly)
 
     similarEdges1 = getSimlarEdges(rootAssembly, edge1, radii[0])
     similarEdges2 = getSimlarEdges(rootAssembly, edge2, radii[1])
 
-    distance0 = np.linalg.norm(np.asarray(edge1.pointOn[0]) - edge2.pointOn[0])
-    maxDistance = 1.5*(distance0 + sum(radii))
+    try:
+        viewport.disableColorCodeUpdates() # suspend updates for better performance
 
-    # Find edges in similarEdges2 closest to simpiarEdges1
-    pointTree = KDTree([min(edgeArray).pointOn[0] for edgeArray in similarEdges2])
-    distances, index2 = pointTree.query([min(edgeArray).pointOn[0] for edgeArray in similarEdges1],
-                                        distance_upper_bound=maxDistance)
+        rp1 = [centerPoint(model, edgeArray) for edgeArray in similarEdges1]
+        rp2 = [centerPoint(model, edgeArray) for edgeArray in similarEdges2]
 
-    row2Points = set() # keep track to prevent multiple edge1 edges connecting to the same edge2 edge
-    wires = []
-    for row in np.argsort(distances):
-        if distances[row] > maxDistance:
-            break # edge arrays in this row and remaining rows are too far away from each other
-        row2 = index2[row]
-        if row2 in row2Points:
-            continue # already connected to this edgeArray; shortest distance wins
-        row2Points.add(row2)
-        wires.append(wireBetweenEdgeCenters(model, similarEdges1[row], similarEdges2[row2]))
+        coords1 = [rootAssembly.getCoordinates(rp) for rp in rp1]
+        coords2 = [rootAssembly.getCoordinates(rp) for rp in rp2]
 
-    wireNames = set(w.name for w in wires if w is not None)
-    newEdges = rootAssembly.edges[0:0]  # empty edgeArray
-    for edge in rootAssembly.edges:
-        if not edge.featureName in wireNames:
-            continue
-        newEdges += rootAssembly.edges[edge.index:edge.index + 1]
+        boundDistance = np.linalg.norm(np.asarray(coords1[0]) - coords2[0]) + 0.5*sum(radii)
 
+        # Find edge centers in similarEdges2 closest to centers of similarEdges1
+        pointTree = KDTree(coords2)
+
+        distances, index2 = pointTree.query(coords1, distance_upper_bound=boundDistance)
+
+        row2Points = set() # keep track to prevent multiple edge1 edges connecting to the same edge2 edge
+        wires = []
+        for row in np.argsort(distances):
+            if distances[row] > boundDistance:
+                break # edge arrays in this row and remaining rows are missing matches
+            row2 = index2[row]
+            if row2 in row2Points:
+                continue # another wire already connected to this edgeArray; shortest distance wins
+            row2Points.add(row2)
+            makeSpider(model, similarEdges1[row], rp1[row])
+            makeSpider(model, similarEdges2[row2], rp2[row2])
+            wires.append(wireBetweenCenters(model, rp1[row], rp2[row2]))
+        deleteUnusedCenters(rootAssembly)
+        wireNames = set(w.name for w in wires if w is not None)
+        newEdges = rootAssembly.edges[0:0]  # empty edgeArray
+        for edge in rootAssembly.edges:
+            if not edge.featureName in wireNames:
+                continue
+            newEdges += rootAssembly.edges[edge.index:edge.index + 1]
+
+    finally:
+        viewport.enableColorCodeUpdates() # enable viewport updates even if exception
 
     partNames = [rootAssembly.instances[edge.instanceName].partName for edge in edges]
     if not newEdges:
