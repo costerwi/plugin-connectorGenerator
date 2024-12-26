@@ -199,24 +199,43 @@ def addConnectors(edge1, edge2):
     resetCenters(model)
     resetConnectedPoints(rootAssembly)
 
-    similarEdges1 = getSimlarEdges(rootAssembly, edge1, radii[0])
-    similarEdges2 = getSimlarEdges(rootAssembly, edge2, radii[1])
-
     try:
         viewport.disableColorCodeUpdates() # suspend updates for better performance
 
+        similarEdges1 = getSimlarEdges(rootAssembly, edge1, radii[0])
         rp1 = [centerPoint(model, edgeArray) for edgeArray in similarEdges1]
-        rp2 = [centerPoint(model, edgeArray) for edgeArray in similarEdges2]
-
         coords1 = [rootAssembly.getCoordinates(rp) for rp in rp1]
-        coords2 = [rootAssembly.getCoordinates(rp) for rp in rp2]
 
-        boundDistance = np.linalg.norm(np.asarray(coords1[0]) - coords2[0]) + 0.5*sum(radii)
+        # TODO handle special case of edge1.instanceName == edge2.instanceName => instances must always match
 
-        # Find edge centers in similarEdges2 closest to centers of similarEdges1
-        pointTree = KDTree(coords2)
-
-        distances, index2 = pointTree.query(coords1, distance_upper_bound=boundDistance)
+        if abs(radii[1] - radii[0])/radii[1] > 0.01:
+            # edge1 and edge2 have different radii, different similarEdges
+            similarEdges2 = getSimlarEdges(rootAssembly, edge2, radii[1])
+            rp2 = [centerPoint(model, edgeArray) for edgeArray in similarEdges2]
+            coords2 = [rootAssembly.getCoordinates(rp) for rp in rp2]
+            boundDistance = np.linalg.norm(np.asarray(coords1[0]) - coords2[0]) + 0.5*sum(radii)
+            # Find edge centers in similarEdges2 closest to centers of similarEdges1
+            pointTree = KDTree(coords2)
+            distances, index2 = pointTree.query(coords1, distance_upper_bound=boundDistance)
+        else:
+            # same radius for both edges; similarEdges2 will be same as similarEdges1
+            similarEdges2 = similarEdges1
+            rp2 = rp1
+            coords2 = coords1
+            for i, edgeList in enumerate(similarEdges2):
+                if edge2 in edgeList:
+                    boundDistance = np.linalg.norm(np.asarray(coords1[0]) - coords2[i]) + 0.5*sum(radii)
+                    break
+            else:
+                raise RuntimeError('Matching edge not found')
+            # Find edge centers closest to each other
+            pointTree = KDTree(coords2)
+            distances, index2 = pointTree.query(
+                    coords1,
+                    k=[2],  # use second closest point to skip point matching with itself
+                    distance_upper_bound=boundDistance)
+            distances = distances.flatten()
+            index2 = index2.flatten()
 
         row2Points = set() # keep track to prevent multiple edge1 edges connecting to the same edge2 edge
         wires = []
