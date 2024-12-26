@@ -188,10 +188,10 @@ def addConnectors(edge1, edge2):
     model = mdb.models[rootAssembly.modelName]
 
     # Check for bad input from user
-    if edge1.instanceName == edge2.instanceName:
-        raise ValueError('Edges are from the same instance')
     edges = edge1, edge2
     radii = [edge.getRadius() for edge in edges] # will raise exception if not a radius
+    if edge2 in tangentEdges(edge1, radii[0]):
+        raise ValueError('The same edge was selected twice')
     for edge in edges:
         instance = rootAssembly.instances[edge.instanceName]
         assert hasattr(instance, 'partName')
