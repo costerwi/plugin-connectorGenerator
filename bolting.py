@@ -175,7 +175,7 @@ def wireBetweenCenters(model, rpA, rpB):
 
     wire = rootAssembly.WirePolyLine(points=((rpA, rpB), ), meshable=False)
     connectedPoints.insert(insertion, pair) # insert sorted
-    newName = uniqueKey(rootAssembly.features, 'WireBolt')
+    newName = uniqueKey(rootAssembly.features, 'WireConnector')
     rootAssembly.features.changeKey(fromName=wire.name, toName=newName)
     return rootAssembly.features[newName]
 
@@ -262,12 +262,11 @@ def addConnectors(edge1, edge2):
 
     partNames = [rootAssembly.instances[edge.instanceName].partName for edge in edges]
     if not newEdges:
-        print('No new wires added from {0[0]} hole diameter {1[0]:.3g} to {0[1]} hole diameter {1[1]:.3g}'.format(
+        print('No new wires added from {0[0]} edge diameter {1[0]:.3g} to {0[1]} edge diameter {1[1]:.3g}'.format(
             partNames, 2*np.asarray(radii)))
     else:
-        name = uniqueKey(rootAssembly.sets, 'BoltWires')
+        name = uniqueKey(rootAssembly.sets, 'WireConnectors')
         rootAssembly.Set(name=name, edges=newEdges)
-
         print(len(newEdges), name,
-            'added from {0[0]} hole diameter {1[0]:.3g} to {0[1]} hole diameter {1[1]:.3g}'.format(
+            'added from {0[0]} edge diameter {1[0]:.3g} to {0[1]} edge diameter {1[1]:.3g}'.format(
             partNames, 2*np.asarray(radii)))
