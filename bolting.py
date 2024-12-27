@@ -192,9 +192,7 @@ def addConnectors(edge1, edge2):
     radii = [edge.getRadius() for edge in edges] # will raise exception if not a radius
     if edge2 in tangentEdges(edge1, radii[0]):
         raise ValueError('The same edge was selected twice')
-    for edge in edges:
-        instance = rootAssembly.instances[edge.instanceName]
-        assert hasattr(instance, 'partName')
+    partNames = [rootAssembly.instances[edge.instanceName].partName for edge in edges]
 
     resetCenters(model)
     resetConnectedPoints(rootAssembly)
@@ -208,7 +206,7 @@ def addConnectors(edge1, edge2):
 
         # TODO handle special case of edge1.instanceName == edge2.instanceName => instances must always match
 
-        if abs(radii[1] - radii[0])/radii[1] > 0.01:
+        if partNames[0] != partNames[1] or abs(radii[1] - radii[0])/radii[1] > 0.01:
             # edge1 and edge2 have different radii, different similarEdges
             similarEdges2 = getSimlarEdges(rootAssembly, edge2, radii[1])
             rp2 = [centerPoint(model, edgeArray) for edgeArray in similarEdges2]
@@ -218,7 +216,7 @@ def addConnectors(edge1, edge2):
             pointTree = KDTree(coords2)
             distances, index2 = pointTree.query(coords1, distance_upper_bound=boundDistance)
         else:
-            # same radius for both edges; similarEdges2 will be same as similarEdges1
+            # same part and radius for both edges; similarEdges2 will be same as similarEdges1
             similarEdges2 = similarEdges1
             rp2 = rp1
             coords2 = coords1
@@ -260,7 +258,6 @@ def addConnectors(edge1, edge2):
     finally:
         viewport.enableColorCodeUpdates() # enable viewport updates even if exception
 
-    partNames = [rootAssembly.instances[edge.instanceName].partName for edge in edges]
     if not newEdges:
         print('No new wires added from {0[0]} edge diameter {1[0]:.3g} to {0[1]} edge diameter {1[1]:.3g}'.format(
             partNames, 2*np.asarray(radii)))
