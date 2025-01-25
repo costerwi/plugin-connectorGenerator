@@ -36,12 +36,28 @@ def referencePair(rp1, rp2):
 
 
 def tangentEdges(edge, radius):
-    "Return edgeArray of tangent edges with the same radius as edge"
-    edgeArray = edge.getEdgesByEdgeAngle(1.0) # tangent edges within 1 degree
-    for edge in edgeArray:
-        if abs(radius - edge.getRadius())/radius > 0.01:
-            raise ValueError('Tangent edges have inconsistent radii')
-    return edgeArray
+    "Return edgeArray of adjacent circular tangent edges of the specified radius"
+    assert radius > 0
+    tangentEdges = edge.getEdgesByEdgeAngle(1.0) # tangent edges within 1 degree
+    adjacentTangents = tangentEdges[0:0]
+    def addAdjacentTangents(newEdge):
+        nonlocal adjacentTangents
+        i = tangentEdges.index(newEdge)
+        adjacentTangents += tangentEdges[i:i+1]
+        for adjacentEdge in newEdge.getAdjacentEdges():
+            if adjacentEdge in adjacentTangents:
+                continue # already added
+            if not adjacentEdge in tangentEdges:
+                continue # not tangent
+            try:
+                if abs(radius - adjacentEdge.getRadius())/radius > 0.01:
+                    continue # wrong radius
+            except:
+                continue # non-circular edge
+            # TODO check for common center
+            addAdjacentTangents(adjacentEdge)
+    addAdjacentTangents(edge) # start from original edge
+    return adjacentTangents
 
 
 def getSimlarEdges(rootAssembly, edge0, radius):
