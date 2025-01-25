@@ -12,9 +12,7 @@ from __future__ import print_function
 from abaqus import *
 from abaqusConstants import *
 from bisect import bisect_left
-import regionToolset
 import numpy as np
-from scipy.spatial import KDTree
 
 def uniqueKey(repository, baseName='Item'):
     "Return a new unique key within the repository"
@@ -150,6 +148,7 @@ def centerPoint(model, edgeArray):
 
 def makeSpider(model, edgeArray, rp):
     "Create coupling between edgeArray and rp"
+    import regionToolset
     edge0 = min(edgeArray)
     if edgeId(edge0) in edgeCenters:
         return # already connected by coupling
@@ -199,6 +198,7 @@ def wireBetweenCenters(model, rpA, rpB):
 def addConnectors(edge1, edge2):
     "Main method called by CAE"
 
+    from scipy.spatial import KDTree
     viewport = session.viewports[session.currentViewportName]
     rootAssembly = viewport.displayedObject
     model = mdb.models[rootAssembly.modelName]
