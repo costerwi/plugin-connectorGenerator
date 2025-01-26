@@ -135,7 +135,7 @@ def deleteUnusedCenters(rootAssembly):
 
 
 def centerPoint(model, edgeArray):
-    "Create reference point at center of circle and connect with coupling"
+    "Return reference point at center of edgeArray"
     rootAssembly = model.rootAssembly
     # Search all existing couplings for this edge, return its referencePoint if found
     edge0 = min(edgeArray)
