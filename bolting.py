@@ -13,6 +13,9 @@ from abaqus import *
 from abaqusConstants import *
 from bisect import bisect_left
 import numpy as np
+import os
+
+DEBUG = os.environ.get('DEBUG')
 
 def uniqueKey(repository, baseName='Item'):
     "Return a new unique key within the repository"
@@ -222,8 +225,13 @@ def addConnectors(edge1, edge2):
 
         # TODO handle special case of edge1.instanceName == edge2.instanceName => instances must always match
 
+        if DEBUG:
+            print('Parts', *partNames)
+            print('Radii', *radii)
         if partNames[0] != partNames[1] or abs(radii[1] - radii[0])/radii[1] > 0.01:
             # edge1 and edge2 have different radii, different similarEdges
+            if DEBUG:
+                print('Non-matching parts or radii')
             similarEdges2 = getSimlarEdges(rootAssembly, edge2, radii[1])
             rp2 = [centerPoint(model, edgeArray) for edgeArray in similarEdges2]
             coords2 = [rootAssembly.getCoordinates(rp) for rp in rp2]
@@ -233,6 +241,8 @@ def addConnectors(edge1, edge2):
             distances, index2 = pointTree.query(coords1, distance_upper_bound=boundDistance)
         else:
             # same part and radius for both edges; similarEdges2 will be same as similarEdges1
+            if DEBUG:
+                print('Matching parts and radii')
             similarEdges2 = similarEdges1
             rp2 = rp1
             coords2 = coords1
@@ -259,10 +269,22 @@ def addConnectors(edge1, edge2):
             row2 = index2[row]
             if row2 in row2Points:
                 continue # another wire already connected to this edgeArray; shortest distance wins
+            if rp1[row] == rp2[row2]:
+                if DEBUG:
+                    print('Skipping', row, row2)
+                continue # don't connect a point to itself
             row2Points.add(row2)
-            makeSpider(model, similarEdges1[row], rp1[row])
-            makeSpider(model, similarEdges2[row2], rp2[row2])
-            wires.append(wireBetweenCenters(model, rp1[row], rp2[row2]))
+            c1 = makeSpider(model, similarEdges1[row], rp1[row])
+            c2 = makeSpider(model, similarEdges2[row2], rp2[row2])
+            if DEBUG:
+                print('Connecting', row, row2)
+                print('Spiders', c1, c2)
+            try:
+                wires.append(wireBetweenCenters(model, rp1[row], rp2[row2]))
+            except Exception as e:
+                print(repr(e))
+                print(edgeId(similarEdges1[row]), edgeId(similarEdges2[row2]))
+                print(repr(rp1[row]), repr(rp2[row2]))
         deleteUnusedCenters(rootAssembly)
         wireNames = set(w.name for w in wires if w is not None)
         newEdges = rootAssembly.edges[0:0]  # empty edgeArray
