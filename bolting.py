@@ -248,7 +248,7 @@ def addConnectors(edge1, edge2):
             coords2 = coords1
             for i, edgeList in enumerate(similarEdges2):
                 if edge2 in edgeList:
-                    boundDistance = np.linalg.norm(np.asarray(coords1[0]) - coords2[i]) + radii
+                    boundDistance = np.linalg.norm(np.asarray(coords1[0]) - coords2[i]) + radii[0]
                     break
             else:
                 raise RuntimeError('Matching edge not found')
