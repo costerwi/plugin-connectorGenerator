@@ -235,7 +235,7 @@ def addConnectors(edge1, edge2):
             similarEdges2 = getSimlarEdges(rootAssembly, edge2, radii[1])
             rp2 = [centerPoint(model, edgeArray) for edgeArray in similarEdges2]
             coords2 = [rootAssembly.getCoordinates(rp) for rp in rp2]
-            boundDistance = np.linalg.norm(np.asarray(coords1[0]) - coords2[0]) + 0.5*sum(radii)
+            boundDistance = np.linalg.norm(np.asarray(coords1[0]) - coords2[0]) + 0.05*sum(radii)
             # Find edge centers in similarEdges2 closest to centers of similarEdges1
             pointTree = KDTree(coords2)
             distances, index2 = pointTree.query(coords1, distance_upper_bound=boundDistance)
@@ -248,7 +248,7 @@ def addConnectors(edge1, edge2):
             coords2 = coords1
             for i, edgeList in enumerate(similarEdges2):
                 if edge2 in edgeList:
-                    boundDistance = np.linalg.norm(np.asarray(coords1[0]) - coords2[i]) + radii[0]
+                    boundDistance = np.linalg.norm(np.asarray(coords1[0]) - coords2[i]) + 0.1*radii[0]
                     break
             else:
                 raise RuntimeError('Matching edge not found')
