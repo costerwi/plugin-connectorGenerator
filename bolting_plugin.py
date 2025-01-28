@@ -9,7 +9,7 @@ Carl Osterwisch, October 2024
 """
 
 from abaqusGui import *
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 
 class EdgePickingProcedure(AFXProcedure):
 
