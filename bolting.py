@@ -94,7 +94,6 @@ def getSimlarEdges(rootAssembly, edge0, radius):
     return allSimilarEdges
 
 
-newPoints = []
 edgeCenters = {} # dict edge.index -> rp
 def resetCenters(model):
     "Rebuild edgeCenters based on couplings between reference points and edges"
@@ -124,14 +123,11 @@ def resetCenters(model):
         edgeCenters[edgeId(edge0)] = controlSet.referencePoints[0]
 
 
+barePoints = {} # dict edgeId -> uncoupled rpFeature
 def deleteUnusedCenters(rootAssembly):
-    "Remove the new but unusued reference points"
-    unusedCenterPoints = []
-    for featureId in newPoints:
-        feature = rootAssembly.featuresById[featureId]
-        if not feature.children: # not used by a coupling
-            unusedCenterPoints.append(feature.name)
-    rootAssembly.deleteFeatures(unusedCenterPoints)
+    "Remove any new but uncoupled reference points"
+    rootAssembly.deleteFeatures([feature.name for feature in barePoints.values()])
+    barePoints.clear()
 
 
 def centerPoint(model, edgeArray):
@@ -139,13 +135,16 @@ def centerPoint(model, edgeArray):
     rootAssembly = model.rootAssembly
     # Search all existing couplings for this edge, return its referencePoint if found
     edge0 = min(edgeArray)
-    existing = edgeCenters.get(edgeId(edge0))
-    if existing:
-        return existing
+    edgeId0 = edgeId(edge0)
+    if edgeId0 in couplingPoints:
+        return couplingPoints[edgeId0]
+    if edgeId0 in barePoints:
+        rpFeature = barePoints[edgeId0]
+        return rootAssembly.referencePoints[rpFeature.id]
     # Create a new reference point
     instance = rootAssembly.instances[edge0.instanceName]
     rpFeature = rootAssembly.ReferencePoint(point=instance.InterestingPoint(edge0, CENTER))
-    newPoints.append(rpFeature.id)
+    barePoints[edgeId0] = rpFeature
     return rootAssembly.referencePoints[rpFeature.id]
 
 
@@ -164,6 +163,7 @@ def makeSpider(model, edgeArray, rp):
         couplingType=KINEMATIC,
         rotationalCouplingType=ROTATIONAL_STRUCTURAL)
     edgeCenters[edgeId(edge0)] = rp # remember
+    del barePoints[edgeId0]
     return coupling
 
 
@@ -215,6 +215,7 @@ def addConnectors(edge1, edge2):
 
     resetCenters(model)
     resetConnectedPoints(rootAssembly)
+    deleteUnusedCenters(rootAssembly)
 
     try:
         viewport.disableColorCodeUpdates() # suspend updates for better performance
