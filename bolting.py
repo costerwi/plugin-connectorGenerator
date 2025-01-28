@@ -94,12 +94,13 @@ def getSimlarEdges(rootAssembly, edge0, radius):
     return allSimilarEdges
 
 
-edgeCenters = {} # dict edge.index -> rp
-def resetCenters(model):
-    "Rebuild edgeCenters based on couplings between reference points and edges"
-    newPoints.clear()
-    edgeCenters.clear()
+couplingPoints = {} # dict edgeId -> coupled rp
+def reloadCouplings(model):
+    "Rebuild couplingPoints based on couplings between reference points and edges"
+    couplingPoints.clear()
     rootAssembly = model.rootAssembly
+    rps = set(repr(rp) for rp in rootAssembly.referencePoints.values())
+    remove = []
     for constraint in model.constraints.values():
         if not hasattr(constraint, 'couplingType'):
             continue # not a coupling
@@ -120,7 +121,14 @@ def resetCenters(model):
             controlSet = rootAssembly.sets[controlSetName]
         if len(controlSet.referencePoints) != 1:
             continue # must have one reference point
-        edgeCenters[edgeId(edge0)] = controlSet.referencePoints[0]
+        rp = controlSet.referencePoints[0]
+        if repr(rp) in rps:
+            couplingPoints[edgeId(edge0)] = rp
+        else: # rp no longer exists
+            remove.append(constraint.name)
+    for constraintName in remove:
+        print('Deleting constraint', constraintName, 'due to missing RP')
+        del model.constraints[constraintName]
 
 
 barePoints = {} # dict edgeId -> uncoupled rpFeature
@@ -152,7 +160,8 @@ def makeSpider(model, edgeArray, rp):
     "Create coupling between edgeArray and rp"
     import regionToolset
     edge0 = min(edgeArray)
-    if edgeId(edge0) in edgeCenters:
+    edgeId0 = edgeId(edge0)
+    if edgeId0 in couplingPoints:
         return # already connected by coupling
     controlRegion = regionToolset.Region( referencePoints=[rp] )
     surfaceRegion = regionToolset.Region(side1Edges=edgeArray)
@@ -162,7 +171,7 @@ def makeSpider(model, edgeArray, rp):
         influenceRadius=WHOLE_SURFACE,
         couplingType=KINEMATIC,
         rotationalCouplingType=ROTATIONAL_STRUCTURAL)
-    edgeCenters[edgeId(edge0)] = rp # remember
+    couplingPoints[edgeId0] = rp
     del barePoints[edgeId0]
     return coupling
 
@@ -213,7 +222,7 @@ def addConnectors(edge1, edge2):
         raise ValueError('The same edge was selected twice')
     partNames = [rootAssembly.instances[edge.instanceName].partName for edge in edges]
 
-    resetCenters(model)
+    reloadCouplings(model)
     resetConnectedPoints(rootAssembly)
     deleteUnusedCenters(rootAssembly)
 
