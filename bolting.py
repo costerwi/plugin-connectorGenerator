@@ -156,13 +156,14 @@ def centerPoint(model, edgeArray):
     return rootAssembly.referencePoints[rpFeature.id]
 
 
-def makeSpider(model, edgeArray, rp):
-    "Create coupling between edgeArray and rp"
+def makeSpider(model, edgeArray):
+    "Create coupling between edgeArray and its center rp"
     import regionToolset
     edge0 = min(edgeArray)
     edgeId0 = edgeId(edge0)
     if edgeId0 in couplingPoints:
         return # already connected by coupling
+    rp = centerPoint(model, edgeArray)
     controlRegion = regionToolset.Region( referencePoints=[rp] )
     surfaceRegion = regionToolset.Region(side1Edges=edgeArray)
     coupling = model.Coupling(name=uniqueKey(model.constraints, 'CenterCoupling'),
@@ -284,11 +285,8 @@ def addConnectors(edge1, edge2):
                     print('Skipping', row, row2)
                 continue # don't connect a point to itself
             row2Points.add(row2)
-            c1 = makeSpider(model, similarEdges1[row], rp1[row])
-            c2 = makeSpider(model, similarEdges2[row2], rp2[row2])
-            if DEBUG:
-                print('Connecting', row, row2)
-                print('Spiders', c1, c2)
+            makeSpider(model, similarEdges1[row1])
+            makeSpider(model, similarEdges2[row2])
             try:
                 wires.append(wireBetweenCenters(model, rp1[row], rp2[row2]))
             except Exception as e:
