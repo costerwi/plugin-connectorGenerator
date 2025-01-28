@@ -177,9 +177,10 @@ def makeSpider(model, edgeArray):
     return coupling
 
 
-connectedPoints = []  # sorted list of existing connector point pairs
+connectedPoints = []  # sorted list of connected point pairs
 
-def resetConnectedPoints(rootAssembly):
+def reloadConnectedPoints(rootAssembly):
+    "Refresh list connectedPoints based on existing model assembly features"
     connectedPoints.clear()
     groupByChild = {}
     for rpid, rp in rootAssembly.referencePoints.items():
@@ -224,8 +225,8 @@ def addConnectors(edge1, edge2):
     partNames = [rootAssembly.instances[edge.instanceName].partName for edge in edges]
 
     reloadCouplings(model)
-    resetConnectedPoints(rootAssembly)
     deleteUnusedCenters(rootAssembly)
+    reloadConnectedPoints(rootAssembly)
 
     try:
         viewport.disableColorCodeUpdates() # suspend updates for better performance
