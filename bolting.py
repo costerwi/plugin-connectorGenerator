@@ -104,20 +104,31 @@ def reloadCouplings(model):
     for constraint in model.constraints.values():
         if not hasattr(constraint, 'couplingType'):
             continue # not a coupling
-        if constraint.surface[1] != 'Assembly':
-            continue
-        surfaceName = constraint.surface[0]
-        try:
-            surface = rootAssembly.allInternalSurfaces[surfaceName]
-        except KeyError:
-            surface = rootAssembly.surfaces[surfaceName]
+        if len(constraint.surface) != 5:
+            continue # TODO: add support for Part level (len==6)
+        surfaceName, assembly, space, rtype, internal = constraint.surface
+        assert 'Assembly' == assembly
+        if rtype == 1: # node set
+            if internal:
+                surface = rootAssembly.allInternalSets[surfaceName]
+            else:
+                surface = rootAssembly.sets[surfaceName]
+        elif rtype == 9: # surface
+            if internal:
+                surface = rootAssembly.allInternalSurfaces[surfaceName]
+            else:
+                surface = rootAssembly.surfaces[surfaceName]
+        else:
+            continue # unknown type
         if not surface.edges:
             continue # must have edges
         edge0 = min(surface.edges)
-        controlSetName = constraint.controlPoint[0]
-        try:
+
+        controlSetName, assembly, space, rtype, internal = constraint.controlPoint
+        assert 'Assembly' == assembly
+        if internal:
             controlSet = rootAssembly.allInternalSets[controlSetName]
-        except KeyError:
+        else:
             controlSet = rootAssembly.sets[controlSetName]
         if len(controlSet.referencePoints) != 1:
             continue # must have one reference point
