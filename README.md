@@ -17,7 +17,7 @@ the geometry but there are no fasteners.
 
 1. Download and unzip the [latest version](https://github.com/costerwi/plugin-connectorGenerator/releases/latest)
 2. Double-click the included `install.cmd` or manually copy files into your abaqus_plugins directory
-3. Restart Abaqus CAE and you will find Legend King in the Visualizer plug-ins menu
+3. Restart Abaqus CAE and you will find Connector Generator in the Interaction plug-ins menu
 
 ## Example
 The 32 connectors below were made by selecting a circular hole on the bottom instance and an adjacent circular hole in the middle instance.
