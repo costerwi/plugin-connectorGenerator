@@ -49,7 +49,7 @@ toolset.registerGuiMenuButton(
         kernelInitString='import connectorGenerator',
         author='Carl Osterwisch',
         version=__version__,
-        helpUrl='https://github.com/costerwi',
+        helpUrl='https://github.com/costerwi/plugin-connectorGenerator',
         applicableModules=['Assembly', 'Interaction', 'Load', 'Mesh'],
         description=__doc__,
         )
