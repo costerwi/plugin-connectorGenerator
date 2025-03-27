@@ -17,20 +17,20 @@ class EdgePickingProcedure(AFXProcedure):
 
         AFXProcedure.__init__(self, owner)
 
-        self.cmd = AFXGuiCommand(self, method='addConnectors', objectName='bolting')
+        self.cmd = AFXGuiCommand(self, method='addConnectors', objectName='connectorGenerator')
         self.edge1Kw = AFXObjectKeyword(self.cmd, 'edge1', True)
         self.edge2Kw = AFXObjectKeyword(self.cmd, 'edge2', True)
 
     def getFirstStep(self):
         self.step1 = AFXPickStep(self, self.edge1Kw,
-            'Select edge of first bolt hole', AFXPickStep.EDGES,
+            'Select edge of first circular hole', AFXPickStep.EDGES,
             numberToPick=ONE)
         return self.step1
 
     def getNextStep(self, previous):
         if previous == self.step1:
             step = AFXPickStep(self, self.edge2Kw,
-                'Select edge of second bolt hole', AFXPickStep.EDGES,
+                'Select edge of second circular hole', AFXPickStep.EDGES,
                 numberToPick=ONE)
             step.allowRepeatedSelections(False)
             return step
@@ -44,9 +44,9 @@ class EdgePickingProcedure(AFXProcedure):
 toolset = getAFXApp().getAFXMainWindow().getPluginToolset()
 
 toolset.registerGuiMenuButton(
-        buttonText='Bolting',
+        buttonText='Connector Generator',
         object=EdgePickingProcedure(toolset),
-        kernelInitString='import bolting',
+        kernelInitString='import connectorGenerator',
         author='Carl Osterwisch',
         version=__version__,
         helpUrl='https://github.com/costerwi',

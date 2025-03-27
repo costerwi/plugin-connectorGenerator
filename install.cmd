@@ -1,6 +1,6 @@
 @echo off
 
-set plugin=plugin-bolting
+set plugin=connectorGenerator
 
 if defined HOME (
     set abaqus_plugins=%HOME%\abaqus_plugins
