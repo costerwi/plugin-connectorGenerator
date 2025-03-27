@@ -284,19 +284,16 @@ def addConnectors(edge1, edge2):
             distances = distances.flatten()
             index2 = index2.flatten()
 
-        row2Points = set() # keep track to prevent multiple edge1 edges connecting to the same edge2 edge
         wires = []
         for row1 in np.argsort(distances):
+            # TODO implement a minimum bound distance to avoid connctions too close
             if distances[row1] > boundDistance:
                 break # edge arrays in this row and remaining rows are missing matches
             row2 = index2[row1]
-            if row2 in row2Points:
-                continue # another wire already connected to this edgeArray; shortest distance wins
             if rp1[row1] == rp2[row2]:
                 if DEBUG:
                     print('Skipping', row1, row2)
                 continue # don't connect a point to itself
-            row2Points.add(row2)
             makeSpider(model, similarEdges1[row1])
             makeSpider(model, similarEdges2[row2])
             try:
