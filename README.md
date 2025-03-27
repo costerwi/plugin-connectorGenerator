@@ -1,4 +1,4 @@
-# plugin-connectorGenerator
+# Connector Generator
 Abaqus CAE plugin to find and create couplings and wire features connecting
 circular edges matching the size and Parts of the two edges selected by the user.
 
